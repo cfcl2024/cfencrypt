@@ -1,76 +1,397 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Secure AES Encryption & Decryption</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script><script src="https://cdn.jsdelivr.net/npm/uuid@9.0.0/dist/umd/uuidv4.min.js"></script><style>.a{margin-top:40px;margin-bottom:20px;border-bottom:2px solid #dee2e6;padding-bottom:10px;}.b{cursor:pointer;}</style></head><body><div class="container mt-5 mb-5"><h1 class="text-center mb-4">🔒 Secure AES Encryption & Decryption</h1><div class="a"><h3>🔐 Encrypt Your Text</h3></div><div class="mb-3"><label for="eT" class="form-label">Text to Encrypt</label><textarea class="form-control" id="eT" rows="4" placeholder="Enter the text you want to encrypt"></textarea></div><div class="mb-3"><label for="eD" class="form-label">Unlock Date and Time</label><input type="datetime-local" class="form-control" id="eD"><div class="form-text">Specify when the encrypted text can be decrypted without a passphrase.</div></div><div class="mb-3"><label for="d" class="form-label">Difficulty (Number of UUIDs)</label><input type="number" class="form-control" id="d" min="10" value="86400"><div class="form-text">Higher difficulty increases security by generating more UUIDs.</div></div><button class="btn btn-primary" onclick="e()">🔑 Encrypt</button><div class="mt-4"><label for="eE" class="form-label">🔓 Encrypted Data</label><div class="input-group"><textarea class="form-control" id="eE" rows="6" readonly></textarea><button class="btn btn-outline-secondary" type="button" onclick="c('eE')">📋 Copy</button></div><div class="form-text">Save this encrypted data securely. You can export it as JSON if needed.</div></div><div class="mt-3"><label for="sP" class="form-label">🔑 Selected Passphrase (Optional)</label><div class="input-group"><input type="text" class="form-control" id="sP" readonly><button class="btn btn-outline-secondary" type="button" onclick="c('sP')">📋 Copy</button></div><div class="form-text">Use this passphrase to override the unlock date. It's optional.</div></div><button class="btn btn-info mt-3" onclick="x()">💾 Export as JSON</button><div class="a"><h3>🔓 Decrypt Your Text</h3></div><div class="mb-3"><label for="dT" class="form-label">Encrypted Data</label><textarea class="form-control" id="dT" rows="6" placeholder="Paste the encrypted data here"></textarea></div><div class="mb-3"><label for="pI" class="form-label">Passphrase (Optional)</label><input type="text" class="form-control" id="pI" placeholder="Enter the passphrase to override unlock date"><div class="form-text">Provide the passphrase to decrypt immediately, bypassing the unlock date.</div></div><button class="btn btn-success" id="dB" onclick="d()">🔓 Decrypt</button><div class="mt-3"><label for="dD" class="form-label">🔓 Decrypted Text</label><div class="input-group"><textarea class="form-control" id="dD" rows="4" readonly></textarea><button class="btn btn-outline-secondary" type="button" onclick="c('dD')">📋 Copy</button></div></div><div class="mt-3 text-danger" id="eR" style="display:none;">⚠️ Error: Cannot decrypt before the specified date and time or invalid passphrase.</div><div class="mt-3 text-warning" id="iD" style="display:none;">⚠️ Too many decryption attempts. Please wait <span id="tS">60</span> seconds before trying again.</div></div><script>
-(function(){
-    let eO={};const p="DefaultPassphraseForEncryption123!";const M=5,T=60000;let aC=0,fA=null,tA=false;
-    function r(){const arr=new Uint32Array(1);window.crypto.getRandomValues(arr);return arr[0]/(0xFFFFFFFF+1);}
-    function pD(){const t=new Date(),m=new Date(t);m.setDate(t.getDate()+1);document.getElementById("eD").value=m.toISOString().slice(0,16);}
-    function gU(c){let u=[];for(let i=0;i<c;i++)u.push(crypto.randomUUID());return u;}
-    function e(){
-        const t=document.getElementById("eT").value.trim(),d=document.getElementById("eD").value,c=parseInt(document.getElementById("d").value);
-        if(!t){alert("📌 Please enter the text you want to encrypt.");return;}
-        if(!d){alert("📌 Please select a valid unlock date and time.");return;}
-        if(isNaN(c)||c<1){alert("📌 Please enter a valid difficulty level (at least 1).");return;}
-        const u=gU(c),pA=u[Math.floor(r()*u.length)],data=JSON.stringify({text:t,lockedUntil:d}),eD1=CryptoJS.AES.encrypt(data,p).toString(),eD2=CryptoJS.AES.encrypt(data,pA).toString(),eF=JSON.stringify({encryptedDefault:eD1,encryptedPassphrase:eD2,lockedUntil:d,uuids:u,passphrase:pA},null,2);
-        document.getElementById("eE").value=eF;document.getElementById("sP").value=pA;eO=eD;document.getElementById("dD").value="";document.getElementById("eR").style.display="none";sA();alert("✅ Encryption successful! Don't forget to save your encrypted data and passphrase (if you choose to use it).");
-    }
-    async function d(){
-        if(tA){alert("⚠️ Decryption is temporarily disabled due to too many attempts. Please wait.");return;}
-        const eT=document.getElementById("dT").value.trim(),pI=document.getElementById("pI").value.trim();
-        if(!eT){alert("📌 Please enter the encrypted data.");i();return;}
-        let eD;
-        try{eD=JSON.parse(eT);}catch{alert("⚠️ Invalid encrypted data format.");i();return;}
-        const {encryptedDefault:eD1,encryptedPassphrase:eD2,lockedUntil:lU}=eD;
-        if(!eD1||!eD2||!lU){alert("⚠️ Incomplete encrypted data.");i();return;}
-        if(pI){
-            try{
-                const dec=CryptoJS.AES.decrypt(eD2,pI).toString(CryptoJS.enc.Utf8);
-                if(!dec) throw new Error();
-                const pd=JSON.parse(dec);
-                document.getElementById("dD").value=pd.text;document.getElementById("eR").style.display="none";alert("✅ Decryption successful using passphrase.");sA();
-            }catch{
-                document.getElementById("dD").value="";document.getElementById("eR").style.display="block";console.error("Decryption failed with passphrase.");alert("⚠️ Decryption failed. Check your passphrase.");i();
-            }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure AES Encryption & Decryption</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+    <style>
+        .section-header {
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
         }
-        else{
-            try{
-                const dec=CryptoJS.AES.decrypt(eD1,p).toString(CryptoJS.enc.Utf8);
-                if(!dec) throw new Error();
-                const pd=JSON.parse(dec),ed=new Date(pd.lockedUntil),ct=new Date();
-                if(ct>=ed){
-                    document.getElementById("dD").value=pd.text;document.getElementById("eR").style.display="none";alert("✅ Decryption successful based on unlock date.");sA();
+        .copy-btn {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5 mb-5">
+        <h1 class="text-center mb-4">🔒 Secure AES Encryption & Decryption</h1>
+
+        <!-- Encryption Section -->
+        <div class="section-header">
+            <h3>🔐 Encrypt Your Text</h3>
+        </div>
+        <div class="mb-3">
+            <label for="encryptText" class="form-label">Text to Encrypt</label>
+            <textarea class="form-control" id="encryptText" rows="4" placeholder="Enter the text you want to encrypt"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="encryptDate" class="form-label">Unlock Date and Time</label>
+            <input type="datetime-local" class="form-control" id="encryptDate">
+            <div class="form-text">Specify when the encrypted text can be decrypted without a passphrase.</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="difficulty" class="form-label">Difficulty (Number of UUIDs)</label>
+            <input type="number" class="form-control" id="difficulty" min="10" value="86400">
+            <div class="form-text">Higher difficulty increases security by generating more UUIDs.</div>
+        </div>
+
+        <button class="btn btn-primary" onclick="encryptText()">🔑 Encrypt</button>
+
+        <div class="mt-4">
+            <label for="encryptedText" class="form-label">🔓 Encrypted Data</label>
+            <div class="input-group">
+                <textarea class="form-control" id="encryptedText" rows="6" readonly></textarea>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('encryptedText')">📋 Copy</button>
+            </div>
+            <div class="form-text">Save this encrypted data securely. You can export it as JSON if needed.</div>
+        </div>
+
+        <div class="mt-3">
+            <label for="selectedPassphrase" class="form-label">🔑 Selected Passphrase (Optional)</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="selectedPassphrase" readonly>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('selectedPassphrase')">📋 Copy</button>
+            </div>
+            <div class="form-text">Use this passphrase to override the unlock date. It's optional.</div>
+        </div>
+
+        <button class="btn btn-info mt-3" onclick="exportData()">💾 Export as JSON</button>
+
+        <!-- Decryption Section -->
+        <div class="section-header">
+            <h3>🔓 Decrypt Your Text</h3>
+        </div>
+
+        <div class="mb-3">
+            <label for="decryptText" class="form-label">Encrypted Data</label>
+            <textarea class="form-control" id="decryptText" rows="6" placeholder="Paste the encrypted data here"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="passphraseInput" class="form-label">Passphrase (Optional)</label>
+            <input type="text" class="form-control" id="passphraseInput" placeholder="Enter the passphrase to override unlock date">
+            <div class="form-text">Provide the passphrase to decrypt immediately, bypassing the unlock date.</div>
+        </div>
+
+        <button class="btn btn-success" id="decryptButton" onclick="decryptText()">🔓 Decrypt</button>
+
+        <div class="mt-3">
+            <label for="decryptedText" class="form-label">🔓 Decrypted Text</label>
+            <div class="input-group">
+                <textarea class="form-control" id="decryptedText" rows="4" readonly></textarea>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('decryptedText')">📋 Copy</button>
+            </div>
+        </div>
+
+        <div class="mt-3 text-danger" id="error" style="display:none;">⚠️ Error: Cannot decrypt before the specified date and time or invalid passphrase.</div>
+        
+        <!-- Decryption Attempt Info -->
+        <div class="mt-3 text-warning" id="decryptionInfo" style="display:none;">
+            ⚠️ Too many decryption attempts. Please wait <span id="timeoutSeconds">60</span> seconds before trying again.
+        </div>
+    </div>
+
+    <script>
+        let exportDataObj = {};
+        const defaultPassphrase = "DefaultPassphraseForEncryption123!"; // Fixed default passphrase
+
+        // Timeout Mechanism Variables
+        const MAX_ATTEMPTS = 5; // Maximum allowed attempts
+        const TIME_WINDOW = 60 * 1000; // Time window in milliseconds (e.g., 60 seconds)
+        let attemptCount = 0;
+        let firstAttemptTime = null;
+        let timeoutActive = false;
+		
+		function getSecureRandomNumber() {
+		  const array = new Uint32Array(1);
+		  window.crypto.getRandomValues(array);
+		  return array[0] / (0xFFFFFFFF + 1);
+		}
+
+        // Function to prefill the date and time input with the current datetime
+        function prefillDateTime() {
+            // Create a new Date object for the current date
+            const today = new Date();
+
+            // Create a new Date object for tomorrow
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+
+            const dateTimeLocal = tomorrow.toISOString().slice(0, 16);
+            document.getElementById("encryptDate").value = dateTimeLocal;
+        }
+
+        function generateUUIDs(count) {
+            let uuids = [];
+            for (let i = 0; i < count; i++) {
+                uuids.push(crypto.randomUUID()); // Generates UUIDs
+            }
+            return uuids;
+        }
+
+        function encryptText() {
+            const text = document.getElementById("encryptText").value.trim();
+            const date = document.getElementById("encryptDate").value;
+            const difficulty = parseInt(document.getElementById("difficulty").value);
+
+            if (!text) {
+                alert("📌 Please enter the text you want to encrypt.");
+                return;
+            }
+
+            if (!date) {
+                alert("📌 Please select a valid unlock date and time.");
+                return;
+            }
+
+            if (isNaN(difficulty) || difficulty < 1) {
+                alert("📌 Please enter a valid difficulty level (at least 1).");
+                return;
+            }
+
+            const uuids = generateUUIDs(difficulty);
+            const passphrase = uuids[Math.floor(getSecureRandomNumber() * uuids.length)];
+
+            // Prepare data to encrypt
+            const data = {
+                text: text,
+                lockedUntil: date
+            };
+            const dataString = JSON.stringify(data);
+
+            // Encrypt with default passphrase
+            const encryptedDefault = CryptoJS.AES.encrypt(dataString, defaultPassphrase).toString();
+
+            // Encrypt with passphrase
+            const encryptedPassphrase = CryptoJS.AES.encrypt(dataString, passphrase).toString();
+
+            // Prepare the final encrypted data as JSON
+            const encryptedData = {
+                encryptedDefault: encryptedDefault,
+                encryptedPassphrase: encryptedPassphrase,
+                lockedUntil: date,
+                uuids: uuids,
+                passphrase: passphrase
+            };
+
+            const encryptedDataString = JSON.stringify(encryptedData, null, 2);
+
+            // Display encrypted data and passphrase
+            document.getElementById("encryptedText").value = encryptedDataString;
+            document.getElementById("selectedPassphrase").value = passphrase;
+
+            // Prepare data for export
+            exportDataObj = encryptedData;
+
+            // Clear decrypted section
+            document.getElementById("decryptedText").value = "";
+            document.getElementById("error").style.display = "none";
+
+            // Reset Decryption Attempts
+            resetDecryptionAttempts();
+
+            // Success alert
+            alert("✅ Encryption successful! Don't forget to save your encrypted data and passphrase (if you choose to use it).");
+        }
+
+        async function decryptText() {
+            if (timeoutActive) {
+                alert("⚠️ Decryption is temporarily disabled due to too many attempts. Please wait.");
+                return;
+            }
+
+            const encryptedTextFull = document.getElementById("decryptText").value.trim();
+            const passphrase = document.getElementById("passphraseInput").value.trim();
+
+            if (!encryptedTextFull) {
+                alert("📌 Please enter the encrypted data.");
+                incrementAttemptCount();
+                return;
+            }
+
+            let encryptedData;
+            try {
+                encryptedData = JSON.parse(encryptedTextFull);
+            } catch (error) {
+                alert("⚠️ Invalid encrypted data format.");
+                incrementAttemptCount();
+                return;
+            }
+
+            const { encryptedDefault, encryptedPassphrase, lockedUntil } = encryptedData;
+
+            if (!encryptedDefault || !encryptedPassphrase || !lockedUntil) {
+                alert("⚠️ Incomplete encrypted data.");
+                incrementAttemptCount();
+                return;
+            }
+
+            if (passphrase) {
+                // Attempt to decrypt with passphrase
+                try {
+                    const decrypted = CryptoJS.AES.decrypt(encryptedData.encryptedPassphrase, passphrase);
+                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+
+                    if (!decryptedString) throw new Error("Decryption failed with the provided passphrase.");
+
+                    const parsedData = JSON.parse(decryptedString);
+                    document.getElementById("decryptedText").value = parsedData.text;
+                    document.getElementById("error").style.display = "none";
+                    alert("✅ Decryption successful using passphrase.");
+                    
+                    // Reset Decryption Attempts on Successful Decryption
+                    resetDecryptionAttempts();
+                } catch (error) {
+                    document.getElementById("decryptedText").value = "";
+                    document.getElementById("error").style.display = "block";
+                    console.error(error);
+                    alert("⚠️ Decryption failed. Check your passphrase.");
+                    incrementAttemptCount();
                 }
-                else{
-                    document.getElementById("dD").value="";document.getElementById("eR").style.display="block";alert("⚠️ Cannot decrypt before the specified unlock date and time.");i();
+            } else {
+                // Attempt to decrypt with default passphrase and check date
+                try {
+                    const decrypted = CryptoJS.AES.decrypt(encryptedData.encryptedDefault, defaultPassphrase);
+                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+
+                    if (!decryptedString) throw new Error("Decryption failed with the default passphrase.");
+
+                    const parsedData = JSON.parse(decryptedString);
+                    const encryptedDate = new Date(parsedData.lockedUntil);
+                    const currentTime = new Date();
+
+                    if (currentTime >= encryptedDate) {
+                        document.getElementById("decryptedText").value = parsedData.text;
+                        document.getElementById("error").style.display = "none";
+                        alert("✅ Decryption successful based on unlock date.");
+                        
+                        // Reset Decryption Attempts on Successful Decryption
+                        resetDecryptionAttempts();
+                    } else {
+                        document.getElementById("decryptedText").value = "";
+                        document.getElementById("error").style.display = "block";
+                        alert("⚠️ Cannot decrypt before the specified unlock date and time.");
+                        incrementAttemptCount();
+                    }
+                } catch (error) {
+                    document.getElementById("decryptedText").value = "";
+                    document.getElementById("error").style.display = "block";
+                    console.error(error);
+                    alert("⚠️ Decryption failed. Ensure the unlock date has passed.");
+                    incrementAttemptCount();
                 }
-            }catch{
-                document.getElementById("dD").value="";document.getElementById("eR").style.display="block";console.error("Decryption failed with default passphrase.");alert("⚠️ Decryption failed. Ensure the unlock date has passed.");i();
             }
         }
-    }
-    function x(){
-        if(!eO||!eO.encryptedDefault){alert("📌 No encrypted data available for export.");return;}
-        const j=JSON.stringify(eO,null,2),b=new Blob([j],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');
-        a.href=u;a.download='encrypted_data.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
-    }
-    function c(id){const el=document.getElementById(id);el.select();el.setSelectionRange(0,99999);navigator.clipboard.writeText(el.value).then(()=>{alert("📋 Copied to clipboard!");}).catch(err=>{alert("⚠️ Failed to copy!");console.error(err);});}
-    window.onload=pD;
-    function i(){
-        const n=Date.now();
-        if(!fA){fA=n;aC=1;}
-        else{
-            if(n-fA<T){
-                aC+=1;
+
+        // Export data to JSON file
+        function exportData() {
+            if (!exportDataObj || !exportDataObj.encryptedDefault) {
+                alert("📌 No encrypted data available for export.");
+                return;
             }
-            else{fA=n;aC=1;}
+
+            const jsonString = JSON.stringify(exportDataObj, null, 2); // Pretty-print JSON
+
+            // Create a Blob from the JSON string
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            // Create a download link
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'encrypted_data.json';
+            document.body.appendChild(a);
+            a.click();
+
+            // Cleanup
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
-        if(aC>M){A();}
-    }
-    function sA(){aC=0;fA=null;if(tA){D();}}
-    function A(){
-        tA=true;document.getElementById("dB").disabled=true;document.getElementById("iD").style.display="block";let s=60;document.getElementById("tS").innerText=s;const ci=setInterval(()=>{
-            s-=1;document.getElementById("tS").innerText=s;if(s<=0){clearInterval(ci);D();}},1000);
-    }
-    function D(){
-        tA=false;document.getElementById("dB").disabled=false;document.getElementById("iD").style.display="none";sA();
-    }
-})();
-</script></body></html>
+
+        // Function to copy text to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            element.setSelectionRange(0, 99999); // For mobile devices
+
+            navigator.clipboard.writeText(element.value)
+                .then(() => {
+                    alert("📋 Copied to clipboard!");
+                })
+                .catch(err => {
+                    alert("⚠️ Failed to copy!");
+                    console.error(err);
+                });
+        }
+
+        // Prefill the date and time when the page loads
+        window.onload = prefillDateTime;
+
+        // Decryption Attempt Functions
+
+        function incrementAttemptCount() {
+            const now = Date.now();
+
+            if (!firstAttemptTime) {
+                firstAttemptTime = now;
+                attemptCount = 1;
+            } else {
+                if (now - firstAttemptTime < TIME_WINDOW) {
+                    attemptCount += 1;
+                } else {
+                    // Reset if time window has passed
+                    firstAttemptTime = now;
+                    attemptCount = 1;
+                }
+            }
+
+            if (attemptCount > MAX_ATTEMPTS) {
+                activateTimeout();
+            }
+        }
+
+        function resetDecryptionAttempts() {
+            attemptCount = 0;
+            firstAttemptTime = null;
+            if (timeoutActive) {
+                deactivateTimeout();
+            }
+        }
+
+        function activateTimeout() {
+            timeoutActive = true;
+            document.getElementById("decryptButton").disabled = true;
+            document.getElementById("decryptionInfo").style.display = "block";
+
+            let remainingSeconds = 60; // Timeout duration in seconds
+            document.getElementById("timeoutSeconds").innerText = remainingSeconds;
+
+            const countdownInterval = setInterval(() => {
+                remainingSeconds -= 1;
+                document.getElementById("timeoutSeconds").innerText = remainingSeconds;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    deactivateTimeout();
+                }
+            }, 1000);
+        }
+
+        function deactivateTimeout() {
+            timeoutActive = false;
+            document.getElementById("decryptButton").disabled = false;
+            document.getElementById("decryptionInfo").style.display = "none";
+            resetDecryptionAttempts();
+        }
+    </script>
+</body>
+</html>
